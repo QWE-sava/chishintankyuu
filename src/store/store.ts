@@ -63,6 +63,7 @@ interface StoreState {
   history: HistoryRecord[];
   notifications: Notification[];
   addDeck: (deck: any) => void;
+  upsertDeck: (deck: any) => void;   // ← 追加
   removeDeck: (id: string) => void;
   clearDecks: () => void;
   updateNotification: (id: string, active: boolean) => void;
@@ -82,40 +83,55 @@ export const useStore = create<StoreState>()(
           return { decks: [...state.decks, normalized] };
         }),
 
+      // 新しく追加した upsertDeck
+      upsertDeck: (deck: any) =>
+        set((state) => {
+          const normalized = normalizeDeck(deck);
+          const exists = state.decks.find((d) => d.id === normalized.id);
+          if (exists) {
+            return {
+              decks: state.decks.map((d) =>
+                d.id === normalized.id ? normalized : d
+              ),
+            };
+          } else {
+            return { decks: [...state.decks, normalized] };
+          }
+        }),
+
       addHistory: (record: HistoryRecord) =>
         set((state) => ({
           history: [...state.history, record],
-      })),
-      
+        })),
+
       releaseWeakCard: (deckId: string, questionId: string) =>
         set((state) => ({
           history: state.history.map((h) =>
-          h.deckId === deckId && h.questionId === questionId
-            ? { ...h, correctCount: h.correctCount + 1 } // 正解数を増やして苦手判定解除
-            : h
-        ),
-      })),
+            h.deckId === deckId && h.questionId === questionId
+              ? { ...h, correctCount: h.correctCount + 1 }
+              : h
+          ),
+        })),
 
       resetMistake: (deckId: string, questionId: string) =>
         set((state) => ({
           history: state.history.map((h) =>
-          h.deckId === deckId && h.questionId === questionId
-            ? { ...h, correctCount: 0, incorrectCount: 0 }
-            : h
-        ),
-      })),
-
+            h.deckId === deckId && h.questionId === questionId
+              ? { ...h, correctCount: 0, incorrectCount: 0 }
+              : h
+          ),
+        })),
 
       getWeakCards: (deckId: string) => {
         const deck = get().decks.find((d) => d.id === deckId);
         const history = get().history.filter((h) => h.deckId === deckId);
 
-      if (!deck) return [];
+        if (!deck) return [];
 
-      return deck.questions.filter((q) => {
-        const qHistory = history.find((h) => h.questionId === q.id);
-        return qHistory && qHistory.incorrectCount > qHistory.correctCount;
-      });
+        return deck.questions.filter((q) => {
+          const qHistory = history.find((h) => h.questionId === q.id);
+          return qHistory && qHistory.incorrectCount > qHistory.correctCount;
+        });
       },
 
       removeDeck: (id: string) =>
