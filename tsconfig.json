@@ -15,24 +15,13 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
+
+    // ここを修正：src を基準にする
+    "baseUrl": "src",
     "paths": {
-      "@/components/*": [
-        "src/components/*"
-      ],
-      "@/store/*": [
-        "src/store/*"
-      ],
-      "@/utils/*": [
-        "src/utils/*"
-      ],
-      "@/types/*": [
-        "src/types/*"
-      ],
-      "@/styles/*": [
-        "src/styles/*"
-      ]
+      "@/*": ["*"]
     },
+
     "incremental": true,
     "isolatedModules": true
   },
