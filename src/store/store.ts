@@ -63,11 +63,15 @@ interface StoreState {
   history: HistoryRecord[];
   notifications: Notification[];
   addDeck: (deck: any) => void;
-  upsertDeck: (deck: any) => void;   // ← 追加
+  upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
   clearDecks: () => void;
   updateNotification: (id: string, active: boolean) => void;
   getSummary: (deckId: string) => Summary;
+
+  // 追加した機能
+  weakCards: (deckId: string) => Question[];
+  recordStudy: (deckId: string, questionId: string, correct: boolean) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -83,7 +87,6 @@ export const useStore = create<StoreState>()(
           return { decks: [...state.decks, normalized] };
         }),
 
-      // 新しく追加した upsertDeck
       upsertDeck: (deck: any) =>
         set((state) => {
           const normalized = normalizeDeck(deck);
@@ -133,6 +136,56 @@ export const useStore = create<StoreState>()(
           return qHistory && qHistory.incorrectCount > qHistory.correctCount;
         });
       },
+
+      // 追加した weakCards
+      weakCards: (deckId: string) => {
+        const deck = get().decks.find((d) => d.id === deckId);
+        const history = get().history.filter((h) => h.deckId === deckId);
+
+        if (!deck) return [];
+
+        return deck.questions.filter((q) => {
+          const qHistory = history.find((h) => h.questionId === q.id);
+          return qHistory && qHistory.incorrectCount > qHistory.correctCount;
+        });
+      },
+
+      // 追加した recordStudy
+      recordStudy: (deckId: string, questionId: string, correct: boolean) =>
+        set((state) => {
+          const timestamp = new Date().toISOString();
+          const existing = state.history.find(
+            (h) => h.deckId === deckId && h.questionId === questionId
+          );
+
+          if (existing) {
+            return {
+              history: state.history.map((h) =>
+                h.deckId === deckId && h.questionId === questionId
+                  ? {
+                      ...h,
+                      correctCount: h.correctCount + (correct ? 1 : 0),
+                      incorrectCount: h.incorrectCount + (!correct ? 1 : 0),
+                      timestamp,
+                    }
+                  : h
+              ),
+            };
+          } else {
+            return {
+              history: [
+                ...state.history,
+                {
+                  deckId,
+                  questionId,
+                  correctCount: correct ? 1 : 0,
+                  incorrectCount: correct ? 0 : 1,
+                  timestamp,
+                },
+              ],
+            };
+          }
+        }),
 
       removeDeck: (id: string) =>
         set((state) => ({
