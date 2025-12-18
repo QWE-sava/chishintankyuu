@@ -72,6 +72,10 @@ interface StoreState {
   // 追加した機能
   weakCards: (deckId: string) => Question[];
   recordStudy: (deckId: string, questionId: string, correct: boolean) => void;
+  addHistory: (record: HistoryRecord) => void;
+  releaseWeakCard: (deckId: string, questionId: string) => void;
+  resetMistake: (deckId: string, questionId: string) => void;
+  getWeakCards: (deckId: string) => Question[];
 }
 
 export const useStore = create<StoreState>()(
@@ -137,7 +141,6 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      // 追加した weakCards
       weakCards: (deckId: string) => {
         const deck = get().decks.find((d) => d.id === deckId);
         const history = get().history.filter((h) => h.deckId === deckId);
@@ -150,7 +153,6 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      // 追加した recordStudy
       recordStudy: (deckId: string, questionId: string, correct: boolean) =>
         set((state) => {
           const timestamp = new Date().toISOString();
