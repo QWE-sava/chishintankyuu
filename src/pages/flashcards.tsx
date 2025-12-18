@@ -33,7 +33,7 @@ export default function FlashcardPage() {
 
       <Card sx={{ p: 3 }}>
         <CardContent>
-          <Typography variant="h5">
+          <Typography variant="h5" mb={2}>
             {flipped ? `答え: ${card.answer}` : `質問: ${card.question}`}
           </Typography>
 
@@ -43,7 +43,8 @@ export default function FlashcardPage() {
             </Typography>
           )}
 
-          <Box mt={2}>
+          {/* ✅ ボタンを必ず表示する */}
+          <Box mt={3}>
             <Button
               variant="contained"
               onClick={() => setFlipped(!flipped)}
@@ -57,6 +58,11 @@ export default function FlashcardPage() {
           </Box>
         </CardContent>
       </Card>
+
+      {/* 進捗表示 */}
+      <Typography variant="body2" color="text.secondary" mt={2}>
+        {index + 1} / {deck.questions.length} 枚目
+      </Typography>
     </Box>
   );
 }
