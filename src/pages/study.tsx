@@ -64,7 +64,7 @@ export default function StudyPage() {
       // 復習モード → 正解したら解除
       setReleasedCards((prev) => [...prev, current.id]);
     } else if (mode !== "weak" && !correct) {
-      // ✅ 通常学習モード → ミスしたら問答無用でリセット
+      // 通常学習モード → ミスしたら問答無用でリセット
       resetMistake(deck.id, current.id);
     }
   };
@@ -89,7 +89,7 @@ export default function StudyPage() {
       {!finished ? (
         <>
           <Typography variant="h6" mb={2}>{current.question}</Typography>
-          {current.options.map((opt, idx) => (
+          {current.options.map((opt: string, idx: number) => (
             <Button
               key={idx}
               variant="outlined"
