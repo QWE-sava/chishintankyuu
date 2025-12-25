@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type DeckMode = "quiz" | "flashcard" | "review";
+
 export interface Question {
   id: string;
   question: string;
@@ -12,6 +14,7 @@ export interface Question {
 export interface Deck {
   id: string;
   name: string;
+  mode: DeckMode; // ← 追加
   questions: Question[];
 }
 
@@ -41,11 +44,12 @@ export interface Summary {
   weakCardsCount: number;
 }
 
-// JSONを正規化して Deck 型に揃える関数
+// JSON → Deck 正規化
 function normalizeDeck(input: any): Deck {
   return {
     id: input.id ?? input.deckId ?? crypto.randomUUID(),
     name: input.name ?? input.deckName ?? "名称未設定デッキ",
+    mode: input.mode ?? "quiz", // ← 追加（デフォルトは quiz）
     questions: Array.isArray(input.questions)
       ? input.questions.map((q: any) => ({
           id: q.id ?? q.questionId ?? crypto.randomUUID(),
@@ -62,20 +66,25 @@ interface StoreState {
   decks: Deck[];
   history: HistoryRecord[];
   notifications: Notification[];
+
   addDeck: (deck: any) => void;
   upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
   clearDecks: () => void;
+
   updateNotification: (id: string, active: boolean) => void;
   getSummary: (deckId: string) => Summary;
 
-  // 追加した機能
+  // 追加機能
   weakCards: (deckId: string) => Question[];
   recordStudy: (deckId: string, questionId: string, correct: boolean) => void;
   addHistory: (record: HistoryRecord) => void;
   releaseWeakCard: (deckId: string, questionId: string) => void;
   resetMistake: (deckId: string, questionId: string) => void;
   getWeakCards: (deckId: string) => Question[];
+
+  // ★ モード別デッキ取得
+  getDeckByMode: (mode: DeckMode) => Deck[];
 }
 
 export const useStore = create<StoreState>()(
@@ -105,6 +114,11 @@ export const useStore = create<StoreState>()(
             return { decks: [...state.decks, normalized] };
           }
         }),
+
+      // ★ モード別デッキ取得
+      getDeckByMode: (mode: DeckMode) => {
+        return get().decks.filter((d) => d.mode === mode);
+      },
 
       addHistory: (record: HistoryRecord) =>
         set((state) => ({
@@ -141,17 +155,7 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      weakCards: (deckId: string) => {
-        const deck = get().decks.find((d) => d.id === deckId);
-        const history = get().history.filter((h) => h.deckId === deckId);
-
-        if (!deck) return [];
-
-        return deck.questions.filter((q) => {
-          const qHistory = history.find((h) => h.questionId === q.id);
-          return qHistory && qHistory.incorrectCount > qHistory.correctCount;
-        });
-      },
+      weakCards: (deckId: string) => get().getWeakCards(deckId),
 
       recordStudy: (deckId: string, questionId: string, correct: boolean) =>
         set((state) => {
