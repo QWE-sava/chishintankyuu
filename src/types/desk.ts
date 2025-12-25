@@ -1,17 +1,17 @@
-// types/deck.ts
+// src/types/deck.ts
 export type DeckMode = "quiz" | "flashcard" | "review";
 
-export type Question = {
+export interface Question {
   id: string;
   question: string;
-  options?: string[];
+  options: string[];
   answer: string;
   explanation?: string;
-};
+}
 
-export type Deck = {
+export interface Deck {
   id: string;
   name: string;
   mode: DeckMode;
   questions: Question[];
-};
+}
