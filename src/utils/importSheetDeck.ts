@@ -6,20 +6,30 @@ export async function importSheetDeck(sheetId: string): Promise<Deck> {
   const res = await fetch(url);
   const csv = await res.text();
 
-  const parsed = Papa.parse(csv, { header: true });
-  const rows = parsed.data as any[];
+  const parsed = Papa.parse(csv, { header: false });
+  const rows = parsed.data as string[][];
 
-  const questions: Question[] = rows.map((row) => ({
-    id: crypto.randomUUID(),
-    question: row.question,
-    answer: row.answer,
-    options: row.options ? row.options.split("||") : [],
-  }));
+  // --- 1行目でモードを指定 ---
+  // 例: ["mode: flashcard"]
+  const firstLine = rows[0]?.[0] ?? "";
+  const mode = firstLine.includes("quiz") ? "quiz" : "flashcard";
+
+  // --- 2行目以降をデータとして扱う ---
+  const dataRows = rows.slice(1);
+
+  const questions: Question[] = dataRows
+    .filter((row) => row.length >= 2 && row[0]) // question がある行だけ
+    .map((row) => ({
+      id: crypto.randomUUID(),
+      question: row[0],
+      answer: row[1],
+      options: row[2] ? row[2].split("||") : [],
+    }));
 
   return {
     id: crypto.randomUUID(),
     name: `Sheet-${sheetId}`,
-    mode: "quiz",
+    mode,
     questions,
   };
 }
