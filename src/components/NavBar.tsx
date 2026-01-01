@@ -18,6 +18,10 @@ export default function NavBar() {
         <Button color="inherit" component={Link} href="/">
         ホーム
         </Button>
+        <Link href="/import" passHref>
+          <Button color="inherit">インポート</Button>
+        </Link>
+
       </Toolbar>
     </AppBar>
   );
