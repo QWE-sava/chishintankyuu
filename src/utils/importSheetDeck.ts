@@ -9,26 +9,30 @@ export async function importSheetDeck(sheetId: string): Promise<Deck> {
   const parsed = Papa.parse(csv, { header: false });
   const rows = parsed.data as string[][];
 
-  // --- 1行目でモードを指定 ---
+  console.log("CSV RAW:", csv);
+  console.log("PARSED ROWS:", rows);
+
   const firstLine = rows[0]?.[0]?.trim() ?? "";
   const mode = firstLine.includes("quiz") ? "quiz" : "flashcard";
 
-  // --- 2行目はヘッダーなのでスキップ ---
-  const dataRows = rows.slice(2);
+  const dataRows = rows.slice(2); // skip mode + header
 
   const questions: Question[] = dataRows
     .map((row) => {
-      const [q, a, opts] = row.map((cell) => cell?.trim() ?? "");
+      if (!Array.isArray(row)) return null;
+      const [q, a, opts] = row;
       if (!q || !a) return null;
 
       return {
         id: crypto.randomUUID(),
-        question: q,
-        answer: a,
-        options: opts ? opts.split("||") : [],
+        question: q.trim(),
+        answer: a.trim(),
+        options: opts?.trim() ? opts.trim().split("||") : [],
       };
     })
-    .filter(Boolean) as Question[];
+    .filter((q) => q !== null) as Question[];
+
+  console.log("FINAL QUESTIONS:", questions);
 
   return {
     id: crypto.randomUUID(),
