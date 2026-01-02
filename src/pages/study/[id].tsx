@@ -7,22 +7,17 @@ import { useEffect, useState } from "react";
 export default function StudyPage() {
   const router = useRouter();
   const { id } = router.query;
-
   const { decks } = useStore();
 
-  console.log("STUDY PAGE LOADED", id, decks);
-
-
-  // ★ persist の hydration 完了を待つ
   const [hydrated, setHydrated] = useState(false);
-
-  // ★ hydration 完了後に deck をセット
   const [deck, setDeck] = useState<any>(null);
 
+  // Zustand persist の復元を待つ
   useEffect(() => {
     setHydrated(true);
   }, []);
 
+  // idとdecksが揃ってからdeckを取得
   useEffect(() => {
     if (!hydrated) return;
     if (typeof id !== "string") return;
@@ -31,19 +26,9 @@ export default function StudyPage() {
     setDeck(found ?? null);
   }, [hydrated, id, decks]);
 
-  // persist 復元前
-  if (!hydrated) {
-    return <p>読み込み中...</p>;
-  }
+  if (!hydrated) return <p>読み込み中...</p>;
+  if (!deck) return <p>デッキが見つかりません</p>;
 
-  // deck が見つからない
-  if (!deck) {
-    return <p>デッキが見つかりません</p>;
-  }
-
-  // -----------------------------
-  // 学習ロジック
-  // -----------------------------
   const [index, setIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -69,9 +54,7 @@ export default function StudyPage() {
         {index + 1} / {deck.questions.length}
       </p>
 
-      {/* ------------------------------ */}
-      {/* FLASHCARD MODE */}
-      {/* ------------------------------ */}
+      {/* フラッシュカードモード */}
       {deck.mode === "flashcard" && (
         <div
           onClick={() => setShowAnswer((v) => !v)}
@@ -92,13 +75,10 @@ export default function StudyPage() {
         </div>
       )}
 
-      {/* ------------------------------ */}
-      {/* QUIZ MODE */}
-      {/* ------------------------------ */}
+      {/* クイズモード */}
       {deck.mode === "quiz" && (
         <div style={{ marginBottom: "24px" }}>
           <h2>{question.question}</h2>
-
           {question.options.length > 0 ? (
             question.options.map((opt: string) => (
               <button
@@ -131,9 +111,7 @@ export default function StudyPage() {
         </div>
       )}
 
-      {/* ------------------------------ */}
-      {/* Navigation */}
-      {/* ------------------------------ */}
+      {/* ナビゲーション */}
       <div style={{ display: "flex", gap: "12px" }}>
         <button onClick={prev} disabled={index === 0}>
           前へ
