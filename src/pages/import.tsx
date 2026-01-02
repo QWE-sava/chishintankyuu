@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { importWordDeck } from "@/utils/importWordDeck";
 import { importSheetDeck } from "@/utils/importSheetDeck";
@@ -12,6 +13,8 @@ export default function ImportPage() {
   const [loading, setLoading] = useState(false);
 
   const handleFile = async (file: File) => {
+    console.log("handleFile CALLED:", file.name);
+
     setLoading(true);
     try {
       let deck;
@@ -27,10 +30,12 @@ export default function ImportPage() {
         return;
       }
 
+      console.log("IMPORTED DECK:", deck);
+
       upsertDeck(deck);
       alert("デッキをインポートしました！");
     } catch (err) {
-      console.error(err);
+      console.error("IMPORT ERROR:", err);
       alert("インポート中にエラーが発生しました");
     } finally {
       setLoading(false);
@@ -38,7 +43,7 @@ export default function ImportPage() {
   };
 
   const handleSheet = async () => {
-    console.log("handleSheet CALLED"); // ← デバッグ用
+    console.log("handleSheet CALLED");
 
     if (!sheetId) {
       alert("シートIDを入力してください");
@@ -48,12 +53,12 @@ export default function ImportPage() {
     setLoading(true);
     try {
       const deck = await importSheetDeck(sheetId);
-      console.log("DECK FROM SHEET:", deck); // ← デバッグ用
+      console.log("DECK FROM SHEET:", deck);
 
       upsertDeck(deck);
       alert("Googleスプレッドシートからインポートしました！");
     } catch (err) {
-      console.error(err);
+      console.error("SHEET IMPORT ERROR:", err);
       alert("スプレッドシートの読み込みに失敗しました");
     } finally {
       setLoading(false);
