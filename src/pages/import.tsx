@@ -2,6 +2,7 @@ import { useState } from "react";
 import { importWordDeck } from "@/utils/importWordDeck";
 import { importSheetDeck } from "@/utils/importSheetDeck";
 import { importAnkiDeck } from "@/utils/importAnkiDeck";
+import { importExcelDeck } from "@/utils/importExcelDeck";
 import { useStore } from "@/store/store";
 
 export default function ImportPage() {
@@ -18,6 +19,8 @@ export default function ImportPage() {
         deck = await importWordDeck(file);
       } else if (file.name.endsWith(".txt") || file.name.endsWith(".csv")) {
         deck = await importAnkiDeck(file);
+      } else if (file.name.endsWith(".xlsx")) {
+        deck = await importExcelDeck(file);
       } else {
         alert("対応していないファイル形式です");
         return;
@@ -34,6 +37,8 @@ export default function ImportPage() {
   };
 
   const handleSheet = async () => {
+    console.log("handleSheet CALLED"); // ← デバッグ用
+
     if (!sheetId) {
       alert("シートIDを入力してください");
       return;
@@ -42,6 +47,8 @@ export default function ImportPage() {
     setLoading(true);
     try {
       const deck = await importSheetDeck(sheetId);
+      console.log("DECK FROM SHEET:", deck); // ← デバッグ用
+
       upsertDeck(deck);
       alert("Googleスプレッドシートからインポートしました！");
     } catch (err) {
@@ -58,6 +65,7 @@ export default function ImportPage() {
 
       {loading && <p>読み込み中...</p>}
 
+      {/* Word */}
       <section style={{ marginBottom: "32px" }}>
         <h2>Word (.docx)</h2>
         <input
@@ -67,6 +75,7 @@ export default function ImportPage() {
         />
       </section>
 
+      {/* Anki */}
       <section style={{ marginBottom: "32px" }}>
         <h2>Anki (.txt / .csv)</h2>
         <input
@@ -76,6 +85,17 @@ export default function ImportPage() {
         />
       </section>
 
+      {/* Excel */}
+      <section style={{ marginBottom: "32px" }}>
+        <h2>Excel (.xlsx)</h2>
+        <input
+          type="file"
+          accept=".xlsx"
+          onChange={(e) => e.target.files && handleFile(e.target.files[0])}
+        />
+      </section>
+
+      {/* Google Sheets */}
       <section style={{ marginBottom: "32px" }}>
         <h2>Googleスプレッドシート</h2>
         <input
@@ -85,7 +105,9 @@ export default function ImportPage() {
           onChange={(e) => setSheetId(e.target.value)}
           style={{ width: "100%", padding: "8px", marginBottom: "8px" }}
         />
-        <button onClick={handleSheet}>インポート</button>
+        <button type="button" onClick={handleSheet}>
+          インポート
+        </button>
       </section>
     </div>
   );
