@@ -7,24 +7,38 @@ import { useEffect, useState } from "react";
 export default function StudyPage() {
   const router = useRouter();
   const { id } = router.query;
+
   const { decks } = useStore();
+  const [hydrated, setHydrated] = useState(false);
+  const [deck, setDeck] = useState<any>(null);
 
-  const [deck, setDeck] = useState<ReturnType<typeof decks.find> | null>(null);
-  const [index, setIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
-
-  // デッキ取得（idが確定してから）
+  // ★ persist の復元完了を待つ
   useEffect(() => {
-    if (typeof id === "string") {
-      const found = decks.find((d) => d.id === id);
-      setDeck(found ?? null);
-    }
-  }, [id, decks]);
+    setHydrated(true);
+  }, []);
 
+  // ★ id と decks が揃ってから deck を取得
+  useEffect(() => {
+    if (!hydrated) return;
+    if (typeof id !== "string") return;
+
+    const found = decks.find((d) => d.id === id);
+    setDeck(found ?? null);
+  }, [hydrated, id, decks]);
+
+  // persist 復元前
+  if (!hydrated) {
+    return <p>読み込み中...</p>;
+  }
+
+  // deck が見つからない
   if (!deck) {
     return <p>デッキが見つかりません</p>;
   }
+
+  const [index, setIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
 
   const question = deck.questions[index];
 
@@ -47,9 +61,7 @@ export default function StudyPage() {
         {index + 1} / {deck.questions.length}
       </p>
 
-      {/* ------------------------------ */}
-      {/* FLASHCARD MODE */}
-      {/* ------------------------------ */}
+      {/* FLASHCARD */}
       {deck.mode === "flashcard" && (
         <div
           onClick={() => setShowAnswer((v) => !v)}
@@ -70,9 +82,7 @@ export default function StudyPage() {
         </div>
       )}
 
-      {/* ------------------------------ */}
-      {/* QUIZ MODE */}
-      {/* ------------------------------ */}
+      {/* QUIZ */}
       {deck.mode === "quiz" && (
         <div style={{ marginBottom: "24px" }}>
           <h2>{question.question}</h2>
@@ -109,9 +119,6 @@ export default function StudyPage() {
         </div>
       )}
 
-      {/* ------------------------------ */}
-      {/* Navigation */}
-      {/* ------------------------------ */}
       <div style={{ display: "flex", gap: "12px" }}>
         <button onClick={prev} disabled={index === 0}>
           前へ
