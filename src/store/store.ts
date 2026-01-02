@@ -14,7 +14,7 @@ export interface Question {
 export interface Deck {
   id: string;
   name: string;
-  mode: DeckMode; // ← 追加
+  mode: DeckMode;
   questions: Question[];
 }
 
@@ -44,12 +44,22 @@ export interface Summary {
   weakCardsCount: number;
 }
 
-// JSON → Deck 正規化
+/* --------------------------------------------------
+   ★ 修正版 normalizeDeck（mode を正しく保持する）
+-------------------------------------------------- */
 function normalizeDeck(input: any): Deck {
   return {
     id: input.id ?? input.deckId ?? crypto.randomUUID(),
     name: input.name ?? input.deckName ?? "名称未設定デッキ",
-    mode: input.mode ?? "quiz", // ← 追加（デフォルトは quiz）
+
+    // ★ 修正ポイント：input.mode がある場合は必ずそれを使う
+    mode:
+      typeof input.mode === "string"
+        ? input.mode
+        : typeof input.deckMode === "string"
+        ? input.deckMode
+        : "quiz",
+
     questions: Array.isArray(input.questions)
       ? input.questions.map((q: any) => ({
           id: q.id ?? q.questionId ?? crypto.randomUUID(),
@@ -75,7 +85,6 @@ interface StoreState {
   updateNotification: (id: string, active: boolean) => void;
   getSummary: (deckId: string) => Summary;
 
-  // 追加機能
   weakCards: (deckId: string) => Question[];
   recordStudy: (deckId: string, questionId: string, correct: boolean) => void;
   addHistory: (record: HistoryRecord) => void;
@@ -83,7 +92,6 @@ interface StoreState {
   resetMistake: (deckId: string, questionId: string) => void;
   getWeakCards: (deckId: string) => Question[];
 
-  // ★ モード別デッキ取得
   getDeckByMode: (mode: DeckMode) => Deck[];
 }
 
@@ -95,15 +103,15 @@ export const useStore = create<StoreState>()(
       notifications: [],
 
       addDeck: (deck: any) =>
-        set((state) => {
-          const normalized = normalizeDeck(deck);
-          return { decks: [...state.decks, normalized] };
-        }),
+        set((state) => ({
+          decks: [...state.decks, normalizeDeck(deck)],
+        })),
 
       upsertDeck: (deck: any) =>
         set((state) => {
           const normalized = normalizeDeck(deck);
           const exists = state.decks.find((d) => d.id === normalized.id);
+
           if (exists) {
             return {
               decks: state.decks.map((d) =>
@@ -115,7 +123,6 @@ export const useStore = create<StoreState>()(
           }
         }),
 
-      // ★ モード別デッキ取得
       getDeckByMode: (mode: DeckMode) => {
         return get().decks.filter((d) => d.mode === mode);
       },
