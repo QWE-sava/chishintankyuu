@@ -1,4 +1,3 @@
-console.log("STUDY PAGE LOADED", id, decks);
 "use client";
 
 import { useRouter } from "next/router";
@@ -10,6 +9,9 @@ export default function StudyPage() {
   const { id } = router.query;
 
   const { decks } = useStore();
+
+  console.log("STUDY PAGE LOADED", id, decks);
+
 
   // ★ persist の hydration 完了を待つ
   const [hydrated, setHydrated] = useState(false);
