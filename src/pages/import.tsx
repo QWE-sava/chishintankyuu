@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { importWordDeck } from "@/utils/importWordDeck";
 import { importSheetDeck } from "@/utils/importSheetDeck";
