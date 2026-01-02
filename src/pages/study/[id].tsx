@@ -1,3 +1,4 @@
+console.log("STUDY PAGE LOADED", id, decks);
 "use client";
 
 import { useRouter } from "next/router";
