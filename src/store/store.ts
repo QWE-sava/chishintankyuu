@@ -233,42 +233,43 @@ export const useStore = create<StoreState>()(
          ★ 統計
       -------------------------------------------------- */
       getSummary: (deckId: string) => {
-        const deck = get().decks.find((d) => d.id === deckId);
-        const history = get().history.filter((h) => h.deckId === deckId);
+  　　    const deck = get().decks.find((d) => d.id === deckId);
+          const history = get().history.filter((h) => h.deckId === deckId);
 
-        const studiedCards = history.length;
-        const correctCount = history.filter((h) => h.score === 2).length;
-        const incorrectCount = history.filter((h) => h.score === 0).length;
+          const studiedCards = history.length;
+          const correctCount = history.filter((h) => h.score === 2).length;
+          const incorrectCount = history.filter((h) => h.score === 0).length;
 
-        const totalCards = deck?.questions.length ?? 0;
+          const totalCards = deck?.questions.length ?? 0;
 
-        const accuracyPercent =
-          studiedCards > 0
-            ? Math.round((correctCount / studiedCards) * 100)
-            : 0;
+          const accuracyPercent =
+            studiedCards > 0
+              ? Math.round((correctCount / studiedCards) * 100)
+              : 0;
 
-        const progressPercent =
-          totalCards > 0
-            ? Math.round((studiedCards / totalCards) * 100)
-            : 0;
+          const progressPercent =
+            totalCards > 0
+              ? Math.round((studiedCards / totalCards) * 100)
+              : 0;
 
-        const lastStudied =
-          history.length > 0 ? history[history.length - 1].timestamp : null;
+          const lastStudied =
+            history.length > 0 ? history[history.length - 1].timestamp : null;
 
-        const weakCardsCount = incorrectCount;
+          const weakCardsCount = incorrectCount;
 
-        return {
-          studiedCards,
-          correctCount,
-          incorrectCount,
-          totalCards,
-          accuracyPercent,
-          progressPercent,
-          lastStudied,
-          reviewCount: studiedCards,
-          weakCardsCount,
-        };
-      },
+          return {
+            studiedCards,
+            correctCount,
+            incorrectCount,
+            totalCards,
+            accuracyPercent,
+            progressPercent,
+            lastStudied,
+            reviewCount: studiedCards,
+            weakCardsCount,
+          };
+        },
+
 
       updateNotification: (id: string, active: boolean) =>
         set((state) => ({
