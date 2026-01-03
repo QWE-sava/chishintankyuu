@@ -79,7 +79,7 @@ interface StoreState {
   decks: Deck[];
   history: HistoryRecord[];
   notifications: Notification[];
-
+  weakCards: (deckId: string) => Question[];
   addDeck: (deck: any) => void;
   upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
@@ -258,6 +258,7 @@ export const useStore = create<StoreState>()(
         set(() => ({
           decks: [],
         })),
+      weakCards: (deckId: string) => get().getWeakCards(deckId),
 
       updateNotification: (id: string, active: boolean) =>
         set((state) => ({
