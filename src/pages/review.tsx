@@ -1,94 +1,103 @@
+"use client";
+
 import { useStore } from "@/store/store";
-import { Box, Button, Card, CardContent, Stack, Typography } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export default function ReviewPage() {
   const { decks, weakCards, recordStudy } = useStore();
+
+  // とりあえず最初のデッキを対象にする（必要なら選択UIに変更可能）
   const deck = decks[0];
+  if (!deck) return <p>デッキがありません</p>;
 
-  // Deck 型は questions を持っているので cards → questions に修正
-  const weakIds = deck
-    ? deck.questions
-        .filter(q => weakCards(deck.id).some(w => w.id === q.id))
-        .map(q => q.id)
-    : [];
+  const cards = weakCards(deck.id);
+  if (cards.length === 0) return <p>復習対象のカードはありません</p>;
 
-  const [localOrder] = useState(weakIds);
   const [index, setIndex] = useState(0);
+  const [answered, setAnswered] = useState<{ chosen: string; correct: boolean } | null>(null);
 
-  // cards → questions に修正
-  const card = useMemo(
-    () => deck?.questions.find(q => q.id === localOrder[index]),
-    [deck, localOrder, index]
-  );
+  const card = cards[index];
 
-  const [answered, setAnswered] = useState<{ chosen?: string; correct?: boolean }>({});
-
-  if (!deck || weakIds.length === 0) {
-    return (
-      <Typography>
-        復習対象のカードがありません。学習モードで不正解カードを増やすか、設定を見直してください。
-      </Typography>
-    );
-  }
-
-  const onChoose = (opt: string) => {
+  const handleAnswer = (opt: string) => {
     if (!card) return;
+
     const correct = opt === card.answer;
-    recordStudy(deck.id, card.id, correct);
+    const score = correct ? 2 : 0; // ★ SRS対応：boolean → score:number に変換
+
+    recordStudy(deck.id, card.id, score);
+
     setAnswered({ chosen: opt, correct });
   };
 
   const next = () => {
-    setAnswered({});
-    setIndex(i => (i + 1) % localOrder.length);
+    setAnswered(null);
+    setIndex((i) => Math.min(i + 1, cards.length - 1));
+  };
+
+  const prev = () => {
+    setAnswered(null);
+    setIndex((i) => Math.max(i - 1, 0));
   };
 
   return (
-    <Stack gap={2}>
-      <Typography variant="h5">{deck.name} — 復習モード</Typography>
-      <Typography variant="body2">進捗: {index + 1} / {localOrder.length}</Typography>
+    <div style={{ padding: 24 }}>
+      <h1>{deck.name} の復習</h1>
+      <p>
+        {index + 1} / {cards.length}
+      </p>
 
-      {card && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" mb={2}>質問: {card.question}</Typography>
-            <Stack gap={1}>
-              {(card.options ?? []).map((opt) => {
-                const isCorrect = answered.chosen === opt && answered.correct;
-                const isWrong = answered.chosen === opt && answered.correct === false;
-                return (
-                  <Button
-                    key={opt}
-                    variant="contained"
-                    color={isCorrect ? "success" : isWrong ? "error" : "primary"}
-                    onClick={() => onChoose(opt)}
-                    disabled={!!answered.chosen}
-                  >
-                    {opt}
-                  </Button>
-                );
-              })}
-            </Stack>
+      <div
+        style={{
+          border: "1px solid #ccc",
+          padding: 24,
+          borderRadius: 8,
+          marginBottom: 24,
+          background: "#fafafa",
+        }}
+      >
+        <h2>{card.question}</h2>
 
-            {answered.chosen && (
-              <Box mt={2}>
-                <Typography variant="subtitle1">
-                  {answered.correct ? "正解！" : `不正解… 正しい答えは ${card.answer}`}
-                </Typography>
-                {card.explanation && (
-                  <Typography variant="body2" mt={1}>
-                    解説: {card.explanation}
-                  </Typography>
-                )}
-                <Button sx={{ mt: 2 }} variant="outlined" onClick={next}>
-                  次の問題へ
-                </Button>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </Stack>
+        {card.options.map((opt) => {
+          const isCorrect = opt === card.answer;
+          const isChosen = answered?.chosen === opt;
+
+          return (
+            <button
+              key={opt}
+              onClick={() => handleAnswer(opt)}
+              disabled={answered !== null}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: 12,
+                margin: "8px 0",
+                borderRadius: 6,
+                border: "1px solid #ccc",
+                cursor: "pointer",
+                background:
+                  answered === null
+                    ? "#eee"
+                    : isCorrect
+                    ? "#c8f7c5"
+                    : isChosen
+                    ? "#f7c5c5"
+                    : "#eee",
+              }}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", gap: 12 }}>
+        <button onClick={prev} disabled={index === 0}>
+          前へ
+        </button>
+        <button onClick={next} disabled={index === cards.length - 1}>
+          次へ
+        </button>
+      </div>
+    </div>
   );
 }
