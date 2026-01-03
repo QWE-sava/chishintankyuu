@@ -54,12 +54,14 @@ function normalizeDeck(input: any): Deck {
   return {
     id: input.id ?? input.deckId ?? crypto.randomUUID(),
     name: input.name ?? input.deckName ?? "名称未設定デッキ",
+
+    // ★ mode を確実に復元（最重要）
     mode:
-      typeof input.mode === "string"
-        ? input.mode
-        : typeof input.deckMode === "string"
-        ? input.deckMode
-        : "quiz",
+      input.mode ??
+      input.deckMode ??
+      input.type ?? // import データが type を持つ場合
+      "flashcard", // デフォルトは flashcard に変更
+
     questions: Array.isArray(input.questions)
       ? input.questions.map((q: any) => ({
           id: q.id ?? q.questionId ?? crypto.randomUUID(),
@@ -71,7 +73,6 @@ function normalizeDeck(input: any): Deck {
       : [],
   };
 }
-
 /* --------------------------------------------------
    ★ StoreState（あなたの元コードを維持しつつ SRS に統合）
 -------------------------------------------------- */
