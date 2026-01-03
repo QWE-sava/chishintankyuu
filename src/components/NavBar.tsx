@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppBar, Toolbar, Button, Box } from "@mui/material";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function NavBar() {
   return (
     <>
       <AppBar position="static">
@@ -15,7 +15,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ダッシュボード
             </Button>
 
-            {/* ★ 新しく追加したページ */}
             <Button color="inherit" component={Link} href="/today">
               今日やること
             </Button>
@@ -26,8 +25,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Box>
         </Toolbar>
       </AppBar>
-
-      <main>{children}</main>
     </>
   );
 }
