@@ -79,7 +79,7 @@ interface StoreState {
   decks: Deck[];
   history: HistoryRecord[];
   notifications: Notification[];
-  weakCards: (deckId: string) => Question[];
+
   addDeck: (deck: any) => void;
   upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
@@ -89,6 +89,7 @@ interface StoreState {
   getSummary: (deckId: string) => Summary;
 
   getWeakCards: (deckId: string) => Question[];
+  weakCards: (deckId: string) => Question[];
 
   // ★ SRS版 recordStudy
   recordStudy: (deckId: string, questionId: string, score: number) => void;
@@ -128,6 +129,19 @@ export const useStore = create<StoreState>()(
           }
           return { decks: [...state.decks, normalized] };
         }),
+
+      /* --------------------------------------------------
+         ★ removeDeck（エラー原因だったので復活）
+      -------------------------------------------------- */
+      removeDeck: (id: string) =>
+        set((state) => ({
+          decks: state.decks.filter((d) => d.id !== id),
+        })),
+
+      clearDecks: () =>
+        set(() => ({
+          decks: [],
+        })),
 
       getDeckByMode: (mode: DeckMode) => {
         return get().decks.filter((d) => d.mode === mode);
@@ -213,6 +227,8 @@ export const useStore = create<StoreState>()(
         });
       },
 
+      weakCards: (deckId: string) => get().getWeakCards(deckId),
+
       /* --------------------------------------------------
          ★ 統計
       -------------------------------------------------- */
@@ -253,12 +269,6 @@ export const useStore = create<StoreState>()(
           weakCardsCount,
         };
       },
-
-      clearDecks: () =>
-        set(() => ({
-          decks: [],
-        })),
-      weakCards: (deckId: string) => get().getWeakCards(deckId),
 
       updateNotification: (id: string, active: boolean) =>
         set((state) => ({
