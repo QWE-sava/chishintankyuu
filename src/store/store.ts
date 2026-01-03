@@ -11,15 +11,8 @@ export interface Question {
   explanation?: string;
 }
 
-export interface Deck {
-  id: string;
-  name: string;
-  mode: DeckMode;
-  questions: Question[];
-}
-
 /* --------------------------------------------------
-   ★ SRS対応 HistoryRecord（完全版）
+   ★ HistoryRecord は SRS 版に一本化（重複削除）
 -------------------------------------------------- */
 export interface HistoryRecord {
   deckId: string;
@@ -27,6 +20,13 @@ export interface HistoryRecord {
   score: number; // 0,1,2
   nextReviewDate: string; // ISO
   timestamp: string;
+}
+
+export interface Deck {
+  id: string;
+  name: string;
+  mode: DeckMode;
+  questions: Question[];
 }
 
 export interface Notification {
@@ -72,6 +72,9 @@ function normalizeDeck(input: any): Deck {
   };
 }
 
+/* --------------------------------------------------
+   ★ StoreState（あなたの元コードを維持しつつ SRS に統合）
+-------------------------------------------------- */
 interface StoreState {
   decks: Deck[];
   history: HistoryRecord[];
@@ -80,18 +83,25 @@ interface StoreState {
   addDeck: (deck: any) => void;
   upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
+  clearDecks: () => void;
 
-  // ★ SRS
-  recordStudy: (deckId: string, questionId: string, score: number) => void;
-  getTodayCards: (deckId: string) => Question[];
+  updateNotification: (id: string, active: boolean) => void;
+  getSummary: (deckId: string) => Summary;
 
-  // 弱点
   getWeakCards: (deckId: string) => Question[];
 
-  // 統計
-  getSummary: (deckId: string) => Summary;
+  // ★ SRS版 recordStudy
+  recordStudy: (deckId: string, questionId: string, score: number) => void;
+
+  // ★ 今日やるカード
+  getTodayCards: (deckId: string) => Question[];
+
+  getDeckByMode: (mode: DeckMode) => Deck[];
 }
 
+/* --------------------------------------------------
+   ★ Zustand Store（完全修正版）
+-------------------------------------------------- */
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
@@ -99,9 +109,6 @@ export const useStore = create<StoreState>()(
       history: [],
       notifications: [],
 
-      /* -----------------------------
-         デッキ追加
-      ----------------------------- */
       addDeck: (deck: any) =>
         set((state) => ({
           decks: [...state.decks, normalizeDeck(deck)],
@@ -122,14 +129,13 @@ export const useStore = create<StoreState>()(
           return { decks: [...state.decks, normalized] };
         }),
 
-      removeDeck: (id: string) =>
-        set((state) => ({
-          decks: state.decks.filter((d) => d.id !== id),
-        })),
+      getDeckByMode: (mode: DeckMode) => {
+        return get().decks.filter((d) => d.mode === mode);
+      },
 
-      /* -----------------------------
+      /* --------------------------------------------------
          ★ SRS対応：学習記録
-      ----------------------------- */
+      -------------------------------------------------- */
       recordStudy: (deckId, questionId, score) =>
         set((state) => {
           const now = new Date();
@@ -169,9 +175,9 @@ export const useStore = create<StoreState>()(
           };
         }),
 
-      /* -----------------------------
+      /* --------------------------------------------------
          ★ 今日やるカード
-      ----------------------------- */
+      -------------------------------------------------- */
       getTodayCards: (deckId: string) => {
         const deck = get().decks.find((d) => d.id === deckId);
         if (!deck) return [];
@@ -192,9 +198,9 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      /* -----------------------------
-         弱点カード（score=0）
-      ----------------------------- */
+      /* --------------------------------------------------
+         ★ 弱点カード（score=0）
+      -------------------------------------------------- */
       getWeakCards: (deckId: string) => {
         const deck = get().decks.find((d) => d.id === deckId);
         const history = get().history.filter((h) => h.deckId === deckId);
@@ -207,9 +213,9 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      /* -----------------------------
-         統計
-      ----------------------------- */
+      /* --------------------------------------------------
+         ★ 統計
+      -------------------------------------------------- */
       getSummary: (deckId: string) => {
         const deck = get().decks.find((d) => d.id === deckId);
         const history = get().history.filter((h) => h.deckId === deckId);
@@ -233,7 +239,7 @@ export const useStore = create<StoreState>()(
         const lastStudied =
           history.length > 0 ? history[history.length - 1].timestamp : null;
 
-        const weakCardsCount = history.filter((h) => h.score === 0).length;
+        const weakCardsCount = incorrectCount;
 
         return {
           studiedCards,
@@ -247,7 +253,21 @@ export const useStore = create<StoreState>()(
           weakCardsCount,
         };
       },
+
+      clearDecks: () =>
+        set(() => ({
+          decks: [],
+        })),
+
+      updateNotification: (id: string, active: boolean) =>
+        set((state) => ({
+          notifications: state.notifications.map((n) =>
+            n.id === id ? { ...n, active } : n
+          ),
+        })),
     }),
-    { name: "quiz-app-storage" }
+    {
+      name: "quiz-app-storage",
+    }
   )
 );
