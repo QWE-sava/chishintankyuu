@@ -22,6 +22,15 @@ export default function NavBar() {
             <Button color="inherit" component={Link} href="/review">
               復習
             </Button>
+
+            {/* ★ 復活させるタブ */}
+            <Button color="inherit" component={Link} href="/import">
+              インポート
+            </Button>
+
+            <Button color="inherit" component={Link} href="/settings">
+              設定
+            </Button>
           </Box>
         </Toolbar>
       </AppBar>
