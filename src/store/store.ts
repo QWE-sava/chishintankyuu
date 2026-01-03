@@ -11,15 +11,6 @@ export interface Question {
   explanation?: string;
 }
 
-export interface HistoryRecord {
-  deckId: string;
-  questionId: string;
-  score: number; // 0,1,2
-  nextReviewDate: string; // ISO
-  timestamp: string;
-}
-
-
 export interface Deck {
   id: string;
   name: string;
@@ -27,11 +18,14 @@ export interface Deck {
   questions: Question[];
 }
 
+/* --------------------------------------------------
+   ★ SRS対応 HistoryRecord（完全版）
+-------------------------------------------------- */
 export interface HistoryRecord {
   deckId: string;
-  questionId?: string;
-  correctCount: number;
-  incorrectCount: number;
+  questionId: string;
+  score: number; // 0,1,2
+  nextReviewDate: string; // ISO
   timestamp: string;
 }
 
@@ -54,21 +48,18 @@ export interface Summary {
 }
 
 /* --------------------------------------------------
-   ★ 修正版 normalizeDeck（mode を正しく保持する）
+   ★ normalizeDeck（mode を正しく保持）
 -------------------------------------------------- */
 function normalizeDeck(input: any): Deck {
   return {
     id: input.id ?? input.deckId ?? crypto.randomUUID(),
     name: input.name ?? input.deckName ?? "名称未設定デッキ",
-
-    // ★ 修正ポイント：input.mode がある場合は必ずそれを使う
     mode:
       typeof input.mode === "string"
         ? input.mode
         : typeof input.deckMode === "string"
         ? input.deckMode
         : "quiz",
-
     questions: Array.isArray(input.questions)
       ? input.questions.map((q: any) => ({
           id: q.id ?? q.questionId ?? crypto.randomUUID(),
@@ -89,19 +80,16 @@ interface StoreState {
   addDeck: (deck: any) => void;
   upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
-  clearDecks: () => void;
 
-  updateNotification: (id: string, active: boolean) => void;
-  getSummary: (deckId: string) => Summary;
+  // ★ SRS
+  recordStudy: (deckId: string, questionId: string, score: number) => void;
+  getTodayCards: (deckId: string) => Question[];
 
-  weakCards: (deckId: string) => Question[];
-  recordStudy: (deckId: string, questionId: string, correct: boolean) => void;
-  addHistory: (record: HistoryRecord) => void;
-  releaseWeakCard: (deckId: string, questionId: string) => void;
-  resetMistake: (deckId: string, questionId: string) => void;
+  // 弱点
   getWeakCards: (deckId: string) => Question[];
 
-  getDeckByMode: (mode: DeckMode) => Deck[];
+  // 統計
+  getSummary: (deckId: string) => Summary;
 }
 
 export const useStore = create<StoreState>()(
@@ -111,6 +99,9 @@ export const useStore = create<StoreState>()(
       history: [],
       notifications: [],
 
+      /* -----------------------------
+         デッキ追加
+      ----------------------------- */
       addDeck: (deck: any) =>
         set((state) => ({
           decks: [...state.decks, normalizeDeck(deck)],
@@ -127,55 +118,29 @@ export const useStore = create<StoreState>()(
                 d.id === normalized.id ? normalized : d
               ),
             };
-          } else {
-            return { decks: [...state.decks, normalized] };
           }
+          return { decks: [...state.decks, normalized] };
         }),
 
-      getDeckByMode: (mode: DeckMode) => {
-        return get().decks.filter((d) => d.mode === mode);
-      },
-
-      addHistory: (record: HistoryRecord) =>
+      removeDeck: (id: string) =>
         set((state) => ({
-          history: [...state.history, record],
+          decks: state.decks.filter((d) => d.id !== id),
         })),
 
-      releaseWeakCard: (deckId: string, questionId: string) =>
-        set((state) => ({
-          history: state.history.map((h) =>
-            h.deckId === deckId && h.questionId === questionId
-              ? { ...h, correctCount: h.correctCount + 1 }
-              : h
-          ),
-        })),
-
-      resetMistake: (deckId: string, questionId: string) =>
-        set((state) => ({
-          history: state.history.map((h) =>
-            h.deckId === deckId && h.questionId === questionId
-              ? { ...h, correctCount: 0, incorrectCount: 0 }
-              : h
-          ),
-        })),
-
-      getWeakCards: (deckId: string) => {
-        const deck = get().decks.find((d) => d.id === deckId);
-        const history = get().history.filter((h) => h.deckId === deckId);
-
-        if (!deck) return [];
-
-        return deck.questions.filter((q) => {
-          const qHistory = history.find((h) => h.questionId === q.id);
-          return qHistory && qHistory.incorrectCount > qHistory.correctCount;
-        });
-      },
-
-      weakCards: (deckId: string) => get().getWeakCards(deckId),
-
-      recordStudy: (deckId: string, questionId: string, correct: boolean) =>
+      /* -----------------------------
+         ★ SRS対応：学習記録
+      ----------------------------- */
+      recordStudy: (deckId, questionId, score) =>
         set((state) => {
-          const timestamp = new Date().toISOString();
+          const now = new Date();
+          const next = new Date();
+
+          if (score === 2) next.setDate(now.getDate() + 3);
+          else if (score === 1) next.setDate(now.getDate() + 1);
+          else next.setDate(now.getDate());
+
+          const nextReviewDate = next.toISOString();
+
           const existing = state.history.find(
             (h) => h.deckId === deckId && h.questionId === questionId
           );
@@ -184,63 +149,80 @@ export const useStore = create<StoreState>()(
             return {
               history: state.history.map((h) =>
                 h.deckId === deckId && h.questionId === questionId
-                  ? {
-                      ...h,
-                      correctCount: h.correctCount + (correct ? 1 : 0),
-                      incorrectCount: h.incorrectCount + (!correct ? 1 : 0),
-                      timestamp,
-                    }
+                  ? { ...h, score, nextReviewDate, timestamp: now.toISOString() }
                   : h
               ),
             };
-          } else {
-            return {
-              history: [
-                ...state.history,
-                {
-                  deckId,
-                  questionId,
-                  correctCount: correct ? 1 : 0,
-                  incorrectCount: correct ? 0 : 1,
-                  timestamp,
-                },
-              ],
-            };
           }
+
+          return {
+            history: [
+              ...state.history,
+              {
+                deckId,
+                questionId,
+                score,
+                nextReviewDate,
+                timestamp: now.toISOString(),
+              },
+            ],
+          };
         }),
 
-      removeDeck: (id: string) =>
-        set((state) => ({
-          decks: state.decks.filter((d) => d.id !== id),
-        })),
+      /* -----------------------------
+         ★ 今日やるカード
+      ----------------------------- */
+      getTodayCards: (deckId: string) => {
+        const deck = get().decks.find((d) => d.id === deckId);
+        if (!deck) return [];
 
-      clearDecks: () =>
-        set(() => ({
-          decks: [],
-        })),
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-      updateNotification: (id: string, active: boolean) =>
-        set((state) => ({
-          notifications: state.notifications.map((n) =>
-            n.id === id ? { ...n, active } : n
-          ),
-        })),
+        const history = get().history.filter((h) => h.deckId === deckId);
 
+        return deck.questions.filter((q) => {
+          const h = history.find((x) => x.questionId === q.id);
+          if (!h) return true;
+
+          const next = new Date(h.nextReviewDate);
+          next.setHours(0, 0, 0, 0);
+
+          return next <= today;
+        });
+      },
+
+      /* -----------------------------
+         弱点カード（score=0）
+      ----------------------------- */
+      getWeakCards: (deckId: string) => {
+        const deck = get().decks.find((d) => d.id === deckId);
+        const history = get().history.filter((h) => h.deckId === deckId);
+
+        if (!deck) return [];
+
+        return deck.questions.filter((q) => {
+          const h = history.find((x) => x.questionId === q.id);
+          return h && h.score === 0;
+        });
+      },
+
+      /* -----------------------------
+         統計
+      ----------------------------- */
       getSummary: (deckId: string) => {
         const deck = get().decks.find((d) => d.id === deckId);
         const history = get().history.filter((h) => h.deckId === deckId);
 
         const studiedCards = history.length;
-        const correctCount = history.reduce((a, h) => a + h.correctCount, 0);
-        const incorrectCount = history.reduce((a, h) => a + h.incorrectCount, 0);
+        const correctCount = history.filter((h) => h.score === 2).length;
+        const incorrectCount = history.filter((h) => h.score === 0).length;
 
-        const totalCards = Array.isArray(deck?.questions)
-          ? deck.questions.length
-          : 0;
+        const totalCards = deck?.questions.length ?? 0;
 
         const accuracyPercent =
-          correctCount + incorrectCount > 0
-            ? Math.round((correctCount / (correctCount + incorrectCount) * 100))
+          studiedCards > 0
+            ? Math.round((correctCount / studiedCards) * 100)
             : 0;
 
         const progressPercent =
@@ -251,15 +233,7 @@ export const useStore = create<StoreState>()(
         const lastStudied =
           history.length > 0 ? history[history.length - 1].timestamp : null;
 
-        const reviewCount = history.length;
-
-        const weakCardsCount =
-          Array.isArray(deck?.questions)
-            ? deck.questions.filter((q) => {
-                const qHistory = history.find((h) => h.questionId === q.id);
-                return qHistory && qHistory.correctCount < qHistory.incorrectCount;
-              }).length
-            : 0;
+        const weakCardsCount = history.filter((h) => h.score === 0).length;
 
         return {
           studiedCards,
@@ -269,13 +243,11 @@ export const useStore = create<StoreState>()(
           accuracyPercent,
           progressPercent,
           lastStudied,
-          reviewCount,
+          reviewCount: studiedCards,
           weakCardsCount,
         };
       },
     }),
-    {
-      name: "quiz-app-storage",
-    }
+    { name: "quiz-app-storage" }
   )
 );
