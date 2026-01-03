@@ -11,6 +11,15 @@ export interface Question {
   explanation?: string;
 }
 
+export interface HistoryRecord {
+  deckId: string;
+  questionId: string;
+  score: number; // 0,1,2
+  nextReviewDate: string; // ISO
+  timestamp: string;
+}
+
+
 export interface Deck {
   id: string;
   name: string;
