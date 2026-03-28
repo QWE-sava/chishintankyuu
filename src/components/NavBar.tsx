@@ -16,7 +16,7 @@ export default function NavBar() {
 
     // ログイン状態の変化を監視
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (_event: any, session: any) => {
         setUser(session?.user ?? null);
       }
     );

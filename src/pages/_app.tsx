@@ -19,7 +19,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     setMounted(true);
 
     // ログイン状態の変化を監視し、プロファイルを読み込む
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (session?.user) {
         const { data } = await supabase
           .from("profiles")
