@@ -7,7 +7,7 @@ import { unparse } from "papaparse";
 
 export default function DecksPage() {
   const router = useRouter();
-  const { decks, getSummary } = useStore();
+  const { decks, getSummary, getTodayCards } = useStore();
 
   const handleExportJSON = (deck: any) => {
     const jsonString = JSON.stringify(deck, null, 2);
@@ -57,41 +57,60 @@ export default function DecksPage() {
 
       {decks.map((deck) => {
         const summary = getSummary(deck.id);
+        const todayCards = getTodayCards(deck.id);
+        const todayCount = todayCards.length;
 
         return (
-          <Card key={deck.id} sx={{ mb: 3 }}>
+          <Card key={deck.id} sx={{ mb: 3, border: todayCount > 0 ? "2px solid #0070f3" : undefined }}>
             <CardContent>
-              <Typography variant="h5">{deck.name}</Typography>
-
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <Typography variant="h5">{deck.name}</Typography>
+                {todayCount > 0 && (
+                  <Box
+                    sx={{
+                      background: "#0070f3",
+                      color: "#fff",
+                      borderRadius: "12px",
+                      px: 1.5,
+                      py: 0.3,
+                      fontSize: 13,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    🔔 今日の復習 {todayCount}枚
+                  </Box>
+                )}
+              </Box>
               <Box mt={2}>
                 <Typography>学習進捗: {summary.studiedCards} / {summary.totalCards}</Typography>
                 <Typography>進捗率: {summary.progressPercent}%</Typography>
                 <Typography>正解率: {summary.accuracyPercent}%</Typography>
-                <Typography>復習履歴: {summary.reviewCount} 回</Typography>
-                <Typography>最終学習: {summary.lastStudied ?? "未学習"}</Typography>
                 <Typography>苦手カード: {summary.weakCardsCount} 枚</Typography>
+                <Typography>
+                  最終学習:{" "}
+                  {summary.lastStudied
+                    ? new Date(summary.lastStudied).toLocaleString("ja-JP")
+                    : "未学習"}
+                </Typography>
               </Box>
 
-              <Box mt={2}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => router.push(`/study?deckId=${deck.id}`)}
-                  sx={{ mr: 2 }}
-                >
-                  学習開始
-                </Button>
-
-                {summary.weakCardsCount > 0 && (
+              <Box mt={2} display="flex" flexWrap="wrap" gap={1}>
+                {todayCount > 0 && (
                   <Button
                     variant="contained"
-                    color="error"
-                    onClick={() => router.push(`/study?deckId=${deck.id}&mode=weak`)}
-                    sx={{ mr: 2 }}
+                    sx={{ background: "#0070f3", "&:hover": { background: "#005fd4" } }}
+                    onClick={() => router.push(`/study?deckId=${deck.id}&mode=review`)}
                   >
-                    苦手カードを復習
+                    🔔 今日の復習を開始 ({todayCount}枚)
                   </Button>
                 )}
+
+                <Button
+                  variant="outlined"
+                  onClick={() => router.push(`/study?deckId=${deck.id}`)}
+                >
+                  全カードを学習
+                </Button>
 
                 <Button
                   variant="outlined"

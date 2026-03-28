@@ -7,6 +7,8 @@ import { importAnkiDeck } from "@/utils/importAnkiDeck";
 import { importExcelDeck } from "@/utils/importExcelDeck";
 import { generateDeckWithGroq } from "@/utils/aiGenerator";
 import { useStore } from "@/store/store";
+import { syncDecksToCloud } from "@/lib/syncService";
+import { supabase } from "@/lib/supabase";
 
 export default function ImportPage() {
   const { upsertDeck, groqApiKey } = useStore();
@@ -57,6 +59,15 @@ export default function ImportPage() {
       console.log("IMPORTED DECK:", deck);
 
       upsertDeck(deck);
+
+      // クラウド同期
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) await syncDecksToCloud(session.user.id, [deck]);
+      } catch (e) {
+        console.warn("[Sync] デッキ同期エラー:", e);
+      }
+
       alert("デッキをインポートしました！");
     } catch (err) {
       console.error("IMPORT ERROR:", err);
@@ -103,6 +114,15 @@ export default function ImportPage() {
     try {
       const deck = await generateDeckWithGroq(aiText, groqApiKey, "AI生成デッキ", aiMode, aiImagePreview || undefined);
       upsertDeck(deck);
+
+      // クラウド同期
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) await syncDecksToCloud(session.user.id, [deck]);
+      } catch (e) {
+        console.warn("[Sync] AIデッキ同期エラー:", e);
+      }
+
       alert("AIでデッキを生成しました！");
       setAiText("");
       setAiImagePreview(null);

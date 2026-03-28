@@ -17,9 +17,13 @@ export interface Question {
 export interface HistoryRecord {
   deckId: string;
   questionId: string;
-  score: number; // 0,1,2
+  score: number;          // 0=苦手, 1=普通, 2=完璧
   nextReviewDate: string; // ISO
   timestamp: string;
+  // SM-2パラメータ
+  interval: number;       // 次回まで何日か (初期値: 1)
+  repetition: number;     // 連続正解回数 (初期値: 0)
+  easeFactor: number;     // 難易度係数 (初期値: 2.5)
 }
 
 export interface Deck {
@@ -159,40 +163,61 @@ export const useStore = create<StoreState>()(
       recordStudy: (deckId, questionId, score) =>
         set((state) => {
           const now = new Date();
-          const next = new Date();
-
-          if (score === 2) next.setDate(now.getDate() + 3);
-          else if (score === 1) next.setDate(now.getDate() + 1);
-          else next.setDate(now.getDate());
-
-          const nextReviewDate = next.toISOString();
-
           const existing = state.history.find(
             (h) => h.deckId === deckId && h.questionId === questionId
           );
 
+          // SM-2 アルゴリズム
+          const prevInterval    = existing?.interval    ?? 1;
+          const prevRepetition  = existing?.repetition  ?? 0;
+          const prevEaseFactor  = existing?.easeFactor  ?? 2.5;
+
+          let newInterval: number;
+          let newRepetition: number;
+          let newEaseFactor: number;
+
+          if (score === 0) {
+            // 苦手: リセット
+            newRepetition = 0;
+            newInterval   = 1;
+            newEaseFactor = Math.max(1.3, prevEaseFactor - 0.2);
+          } else if (score === 1) {
+            // 普通: intervalは変えず翌日
+            newRepetition = prevRepetition + 1;
+            newInterval   = prevRepetition === 0 ? 1 : prevInterval;
+            newEaseFactor = prevEaseFactor; // 係数は変動なし
+          } else {
+            // 完璧: intervalを指数的に延長
+            newRepetition = prevRepetition + 1;
+            if (prevRepetition === 0)       newInterval = 1;
+            else if (prevRepetition === 1)  newInterval = 3;
+            else newInterval = Math.min(180, Math.round(prevInterval * prevEaseFactor));
+            newEaseFactor = prevEaseFactor + 0.1;
+          }
+
+          const next = new Date();
+          next.setDate(now.getDate() + newInterval);
+          const nextReviewDate = next.toISOString();
+
+          const updated: HistoryRecord = {
+            deckId,
+            questionId,
+            score,
+            nextReviewDate,
+            timestamp: now.toISOString(),
+            interval:    newInterval,
+            repetition:  newRepetition,
+            easeFactor:  newEaseFactor,
+          };
+
           if (existing) {
             return {
               history: state.history.map((h) =>
-                h.deckId === deckId && h.questionId === questionId
-                  ? { ...h, score, nextReviewDate, timestamp: now.toISOString() }
-                  : h
+                h.deckId === deckId && h.questionId === questionId ? updated : h
               ),
             };
           }
-
-          return {
-            history: [
-              ...state.history,
-              {
-                deckId,
-                questionId,
-                score,
-                nextReviewDate,
-                timestamp: now.toISOString(),
-              },
-            ],
-          };
+          return { history: [...state.history, updated] };
         }),
 
       /* --------------------------------------------------
