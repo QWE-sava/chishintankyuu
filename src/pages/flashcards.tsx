@@ -8,15 +8,15 @@ export default function FlashcardPage() {
   const router = useRouter();
   const { deckId } = router.query;
   const { decks } = useStore();
+  
+  const [index, setIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
 
   const deck = decks.find((d) => d.id === deckId);
 
   if (!deck) return <Typography>デッキが見つかりません。</Typography>;
   if (deck.mode !== "flashcard")
     return <Typography>このデッキはフラッシュカード用ではありません。</Typography>;
-
-  const [index, setIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
 
   const card = deck.questions[index];
 

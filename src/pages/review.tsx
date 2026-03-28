@@ -5,6 +5,8 @@ import { useState } from "react";
 
 export default function ReviewPage() {
   const { decks, weakCards, recordStudy } = useStore();
+  const [index, setIndex] = useState(0);
+  const [answered, setAnswered] = useState<{ chosen: string; correct: boolean } | null>(null);
 
   // とりあえず最初のデッキを対象にする（必要なら選択UIに変更可能）
   const deck = decks[0];
@@ -12,9 +14,6 @@ export default function ReviewPage() {
 
   const cards = weakCards(deck.id);
   if (cards.length === 0) return <p>復習対象のカードはありません</p>;
-
-  const [index, setIndex] = useState(0);
-  const [answered, setAnswered] = useState<{ chosen: string; correct: boolean } | null>(null);
 
   const card = cards[index];
 

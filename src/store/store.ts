@@ -80,11 +80,13 @@ interface StoreState {
   decks: Deck[];
   history: HistoryRecord[];
   notifications: Notification[];
+  groqApiKey: string;
 
   addDeck: (deck: any) => void;
   upsertDeck: (deck: any) => void;
   removeDeck: (id: string) => void;
   clearDecks: () => void;
+  setGroqApiKey: (key: string) => void;
 
   updateNotification: (id: string, active: boolean) => void;
   getSummary: (deckId: string) => Summary;
@@ -110,6 +112,9 @@ export const useStore = create<StoreState>()(
       decks: [],
       history: [],
       notifications: [],
+      groqApiKey: "",
+
+      setGroqApiKey: (key: string) => set({ groqApiKey: key }),
 
       addDeck: (deck: any) =>
         set((state) => ({
