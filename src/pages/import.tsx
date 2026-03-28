@@ -14,6 +14,20 @@ export default function ImportPage() {
   const [loading, setLoading] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiMode, setAiMode] = useState<"flashcard" | "quiz">("flashcard");
+  const [aiImagePreview, setAiImagePreview] = useState<string | null>(null);
+
+  const handleAiImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setAiImagePreview(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAiImagePreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFile = async (file: File) => {
     console.log("handleFile CALLED:", file.name);
@@ -22,7 +36,14 @@ export default function ImportPage() {
     try {
       let deck;
 
-      if (file.name.endsWith(".docx")) {
+      if (file.name.endsWith(".json")) {
+        const text = await file.text();
+        const parsedDeck = JSON.parse(text);
+        if (!parsedDeck.id || !parsedDeck.questions) {
+          throw new Error("無効なデッキ形式です");
+        }
+        deck = parsedDeck;
+      } else if (file.name.endsWith(".docx")) {
         deck = await importWordDeck(file);
       } else if (file.name.endsWith(".txt") || file.name.endsWith(".csv")) {
         deck = await importAnkiDeck(file);
@@ -69,8 +90,8 @@ export default function ImportPage() {
   };
 
   const handleAiGenerate = async () => {
-    if (!aiText.trim()) {
-      alert("テキストを入力してください");
+    if (!aiText.trim() && !aiImagePreview) {
+      alert("テキストを入力するか、画像をアップロードしてください");
       return;
     }
     if (!groqApiKey) {
@@ -80,10 +101,11 @@ export default function ImportPage() {
 
     setLoading(true);
     try {
-      const deck = await generateDeckWithGroq(aiText, groqApiKey, "AI生成デッキ", aiMode);
+      const deck = await generateDeckWithGroq(aiText, groqApiKey, "AI生成デッキ", aiMode, aiImagePreview || undefined);
       upsertDeck(deck);
       alert("AIでデッキを生成しました！");
       setAiText("");
+      setAiImagePreview(null);
     } catch (err: any) {
       console.error("AI GENERATE ERROR:", err);
       alert("生成に失敗しました: " + err.message);
@@ -109,6 +131,20 @@ export default function ImportPage() {
           style={{ width: "100%", padding: "8px", marginBottom: "8px", borderRadius: "4px" }}
           placeholder="英語の記事や、歴史のテキストなどを貼り付けてください..."
         />
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>
+            参考画像（オプション）
+          </label>
+          <input type="file" accept="image/*" onChange={handleAiImageUpload} style={{ display: "block", marginBottom: "8px" }} />
+          {aiImagePreview && (
+            <img 
+              src={aiImagePreview} 
+              alt="Preview" 
+              style={{ maxHeight: "200px", maxWidth: "100%", borderRadius: "4px", border: "1px solid #ccc" }} 
+            />
+          )}
+        </div>
+
         <div style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
           <select 
             value={aiMode} 
@@ -118,13 +154,24 @@ export default function ImportPage() {
             <option value="flashcard">フラッシュカード</option>
             <option value="quiz">クイズ (4択)</option>
           </select>
-          <button type="button" onClick={handleAiGenerate} disabled={!groqApiKey}>
-            自動生成する
+          <button type="button" onClick={handleAiGenerate} disabled={!groqApiKey || loading}>
+            {loading ? "生成中..." : "自動生成する"}
           </button>
         </div>
         {!groqApiKey && (
           <p style={{ color: "red", fontSize: "12px" }}>※設定画面でAPIキーを登録してください</p>
         )}
+      </section>
+
+      {/* JSON Backup */}
+      <section style={{ marginBottom: "32px", padding: "16px", background: "#f5f5f5", borderRadius: "8px" }}>
+        <h2>📝 JSON形式から復元</h2>
+        <p style={{ fontSize: "14px", color: "#666" }}>出力したバックアップファイル（.json）を読み込みます</p>
+        <input
+          type="file"
+          accept=".json"
+          onChange={(e) => e.target.files && handleFile(e.target.files[0])}
+        />
       </section>
 
       {/* Word */}

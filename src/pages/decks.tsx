@@ -3,10 +3,47 @@ import React from "react";
 import { useRouter } from "next/router";
 import { useStore } from "@/store/store";
 import { Box, Typography, Card, CardContent, Button } from "@mui/material";
+import { unparse } from "papaparse";
 
 export default function DecksPage() {
   const router = useRouter();
   const { decks, getSummary } = useStore();
+
+  const handleExportJSON = (deck: any) => {
+    const jsonString = JSON.stringify(deck, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const dlAnchorElem = document.createElement("a");
+    dlAnchorElem.href = url;
+    dlAnchorElem.download = `${deck.name}.json`;
+    document.body.appendChild(dlAnchorElem);
+    dlAnchorElem.click();
+    
+    document.body.removeChild(dlAnchorElem);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = (deck: any) => {
+    const csvData = deck.questions.map((q: any) => ({
+      question: q.question,
+      answer: q.answer,
+      options: q.options ? q.options.join("|") : "",
+      explanation: q.explanation || ""
+    }));
+    const csvStr = unparse(csvData);
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvStr], { type: "text/csv;charset=utf-8" }); // BOM追加で文字化け防止
+    const url = URL.createObjectURL(blob);
+
+    const dlAnchorElem = document.createElement("a");
+    dlAnchorElem.href = url;
+    dlAnchorElem.download = `${deck.name}.csv`;
+    document.body.appendChild(dlAnchorElem);
+    dlAnchorElem.click();
+    
+    document.body.removeChild(dlAnchorElem);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Box p={4}>
@@ -50,10 +87,26 @@ export default function DecksPage() {
                     variant="contained"
                     color="error"
                     onClick={() => router.push(`/study?deckId=${deck.id}&mode=weak`)}
+                    sx={{ mr: 2 }}
                   >
                     苦手カードを復習
                   </Button>
                 )}
+
+                <Button
+                  variant="outlined"
+                  onClick={() => handleExportJSON(deck)}
+                  sx={{ mr: 2 }}
+                >
+                  JSONで出力
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  onClick={() => handleExportCSV(deck)}
+                >
+                  CSVで出力
+                </Button>
               </Box>
             </CardContent>
           </Card>
