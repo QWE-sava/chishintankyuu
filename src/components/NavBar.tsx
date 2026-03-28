@@ -10,7 +10,7 @@ export default function NavBar() {
 
   useEffect(() => {
     // 初回ロード時にユーザー取得
-    supabase.auth.getUser().then((response) => {
+    supabase.auth.getUser().then((response: any) => {
       if (response && response.data) setUser(response.data.user);
     });
 
